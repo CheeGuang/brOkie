@@ -1,3 +1,9 @@
+//service worker
+chrome.cookies.getAll({}, function(cookies) {
+  console.log(cookies);
+});
+
+
 // Listen for messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "getCookiesForCurrentDomain") {
