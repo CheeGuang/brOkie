@@ -3,6 +3,8 @@ var Engine = Matter.Engine,
     Runner = Matter.Runner,
     Bodies = Matter.Bodies,
     Composite = Matter.Composite;
+    Mouse = Matter.MouseConstraint;
+    MouseConstraint = Matter.MouseConstraint;
 
 // create an engine
 var engine = Engine.create();
@@ -33,7 +35,7 @@ canvas.style.pointerEvents = 'none';
 function createCookie(x, y) {
   console.log("Creating Cookie");
   var cookie = Bodies.circle(x, y, 50, {
-    restitution: 0.7,
+    restitution: 1,
     render: {
       sprite: {
         texture: chrome.runtime.getURL('images/cookie.png'),
@@ -43,6 +45,28 @@ function createCookie(x, y) {
     }
   });
   Composite.add(engine.world, cookie);
+}
+
+function createCursorBody() { 
+  const cursorBody = Bodies.circle(0, 0, 80, {
+    isStatic: true,
+    density: 100,  // Adjust for desired mass
+    restitution: 1,  // Bounciness
+    frictionAir: 0.05, // Simulates air drag for smoother control
+    render: {
+      fillStyle: 'rgba(0, 0, 0, 0)', // Visual style (orange semi-transparent)
+    }
+  });
+  
+  Composite.add(engine.world, cursorBody);
+  
+  document.addEventListener('mousemove', (event) => {
+    const mouseX = event.clientX;
+    const mouseY = event.clientY;
+    
+    // Set cursor body position to mouse position
+    Matter.Body.setPosition(cursorBody, { x: mouseX, y: mouseY });
+  });
 }
 
 function createBoundaries() {
@@ -89,6 +113,7 @@ function createBoundaries() {
 }
 
 createBoundaries();
+createCursorBody();
 
 // Send a message to the background script to get cookies for the current domain
 chrome.runtime.sendMessage(
