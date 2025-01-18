@@ -77,10 +77,9 @@ function createCookie(x, y, size) {
 }
 
 function createCursorBody() {
-  const cursorBody = Bodies.circle(0, 0, 80, {
+  const cursorBody = Bodies.circle(0, 0, 20, {
     isStatic: true,
     density: 100, // Adjust for desired mass
-    restitution: 1, // Bounciness
     frictionAir: 0.05, // Simulates air drag for smoother control
     render: {
       fillStyle: "rgba(0, 0, 0, 0)", // Visual style (transparent)
@@ -95,6 +94,67 @@ function createCursorBody() {
 
     // Set cursor body position to mouse position
     Matter.Body.setPosition(cursorBody, { x: mouseX, y: mouseY });
+  });
+
+  // Track the currently selected cookie
+  let selectedCookie = null;
+
+  // Add collision start event listener
+  Matter.Events.on(engine, "collisionStart", (event) => {
+    event.pairs.forEach((pair) => {
+      // Check if the cursor body is involved in the collision
+      if (pair.bodyA === cursorBody || pair.bodyB === cursorBody) {
+        const cookieBody = pair.bodyA === cursorBody ? pair.bodyB : pair.bodyA;
+
+        // Only select the cookie if none is currently selected
+        if (!selectedCookie) {
+          if (cookieBody.render && cookieBody.render.sprite) {
+            cookieBody.render.sprite.texture = chrome.runtime.getURL(
+              "images/cookie-selected.png"
+            );
+            selectedCookie = cookieBody; // Set the selected cookie
+          }
+
+          // Log details of the selected cookie
+          console.log("Cookie touched by cursor and texture updated:", {
+            position: cookieBody.position,
+            radius: cookieBody.circleRadius,
+            id: cookieBody.id,
+            render: cookieBody.render,
+          });
+        }
+      }
+    });
+  });
+
+  // Add collision end event listener
+  Matter.Events.on(engine, "collisionEnd", (event) => {
+    event.pairs.forEach((pair) => {
+      // Check if the cursor body is involved in the collision
+      if (pair.bodyA === cursorBody || pair.bodyB === cursorBody) {
+        const cookieBody = pair.bodyA === cursorBody ? pair.bodyB : pair.bodyA;
+
+        // Restore the texture of the cookie if it is the selected one
+        if (cookieBody === selectedCookie) {
+          if (cookieBody.render && cookieBody.render.sprite) {
+            cookieBody.render.sprite.texture =
+              chrome.runtime.getURL("images/cookie.png");
+            selectedCookie = null; // Clear the selection
+          }
+
+          // Log details of the deselected cookie
+          console.log(
+            "Cookie no longer in contact with cursor, texture restored:",
+            {
+              position: cookieBody.position,
+              radius: cookieBody.circleRadius,
+              id: cookieBody.id,
+              render: cookieBody.render,
+            }
+          );
+        }
+      }
+    });
   });
 }
 

@@ -11,12 +11,12 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/matter.min.js","content.js"]
+      "js": ["lib/matter.min.js", "content.js"]
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["images/cookie.png"],
+      "resources": ["images/cookie.png", "images/cookie-selected.png"],
       "matches": ["<all_urls>"]
     }
   ],
