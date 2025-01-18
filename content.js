@@ -1,15 +1,15 @@
 function displayCookie() {
-    console.log("Displaying Cookie");
-    const cookie = document.createElement('img');
-    cookie.src = chrome.runtime.getURL('images/cookie.png');
-    cookie.style.position = 'absolute';
-    cookie.style.width = '100px';
-    cookie.style.height = '100px';
-    cookie.style.zIndex = '9999';
-    cookie.style.top = `${Math.random() * window.innerHeight}px`;
-    cookie.style.left = `${Math.random() * window.innerWidth}px`;
-    document.body.appendChild(cookie);
-    applyPhysics(cookie);
+  console.log("Displaying Cookie");
+  const cookie = document.createElement("img");
+  cookie.src = chrome.runtime.getURL("images/cookie.png");
+  cookie.style.position = "absolute";
+  cookie.style.width = "100px";
+  cookie.style.height = "100px";
+  cookie.style.zIndex = "9999";
+  cookie.style.top = `${Math.random() * window.innerHeight}px`;
+  cookie.style.left = `${Math.random() * window.innerWidth}px`;
+  document.body.appendChild(cookie);
+  applyPhysics(cookie);
 }
 
 function checkCollision(element1, element2) {
@@ -17,10 +17,12 @@ function checkCollision(element1, element2) {
   const rect2 = element2.getBoundingClientRect();
 
   // Check if the bounding boxes overlap
-  return !(rect1.right < rect2.left || 
-           rect1.left > rect2.right || 
-           rect1.bottom < rect2.top || 
-           rect1.top > rect2.bottom);
+  return !(
+    rect1.right < rect2.left ||
+    rect1.left > rect2.right ||
+    rect1.bottom < rect2.top ||
+    rect1.top > rect2.bottom
+  );
 }
 
 // Apply physics to cookie
@@ -68,10 +70,12 @@ function applyPhysics(element) {
       if (otherCookie !== element && checkCollision(element, otherCookie)) {
         // Apply elastic collision response
         const otherRect = otherCookie.getBoundingClientRect();
-        
-        const deltaX = (rect.left + rect.width / 2) - (otherRect.left + otherRect.width / 2);
-        const deltaY = (rect.top + rect.height / 2) - (otherRect.top + otherRect.height / 2);
-        
+
+        const deltaX =
+          rect.left + rect.width / 2 - (otherRect.left + otherRect.width / 2);
+        const deltaY =
+          rect.top + rect.height / 2 - (otherRect.top + otherRect.height / 2);
+
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         if (distance < element.clientWidth / 2 + otherCookie.clientWidth / 2) {
           // Normalize the collision direction
@@ -101,6 +105,17 @@ function applyPhysics(element) {
   animate();
 }
 
-for (let i = 0; i < 10; i++) {
-  displayCookie();
-}
+// Send a message to the background script to get cookies for the current domain
+chrome.runtime.sendMessage(
+  { action: "getCookiesForCurrentDomain" },
+  (response) => {
+    if (response && response.success) {
+      console.log("Cookies for the current", response.domain, response.cookies);
+      for (let i = 0; i < response.cookies.length; i++) {
+        displayCookie();
+      }
+    } else {
+      console.error("Failed to retrieve cookies.");
+    }
+  }
+);
