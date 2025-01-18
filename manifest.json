@@ -16,7 +16,16 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["images/cookie.png", "images/cookie-selected.png"],
+      "resources": [
+        "images/cookie.png",
+        "images/cookie-selected.png",
+        "images/crumbs/crumb1.png",
+        "images/crumbs/crumb2.png",
+        "images/crumbs/crumb3.png",
+        "images/crumbs/crumb4.png",
+        "images/crumbs/crumb5.png",
+        "images/crumbs/crumb6.png"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
