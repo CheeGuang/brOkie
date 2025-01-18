@@ -1,12 +1,24 @@
 {
-  "manifest_version": 3,
-  "name": "brOkie",
-  "version": "1.0",
-  "description": "Cookie visualisation extension",
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
-    }
-  ]
+    "manifest_version": 3,
+    "name": "brOkie",
+    "version": "1.0",
+    "description": "Cookie visualisation extension",
+    "permissions": [
+        "cookies",
+        "tabs"
+    ],
+    "host_permissions": ["<all_urls>"],
+    "background": {
+      "service_worker": "background.js"    
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ]
 }
