@@ -1,14 +1,13 @@
 var Engine = Matter.Engine,
-    Render = Matter.Render,
-    Runner = Matter.Runner,
-    Bodies = Matter.Bodies,
-    Composite = Matter.Composite;
-    Mouse = Matter.MouseConstraint;
-    MouseConstraint = Matter.MouseConstraint;
+  Render = Matter.Render,
+  Runner = Matter.Runner,
+  Bodies = Matter.Bodies,
+  Composite = Matter.Composite;
+Mouse = Matter.MouseConstraint;
+MouseConstraint = Matter.MouseConstraint;
 
 // create an engine
 var engine = Engine.create();
-
 
 // Create a render instance
 const render = Render.create({
@@ -18,52 +17,82 @@ const render = Render.create({
     width: window.innerWidth,
     height: window.innerHeight,
     wireframes: false,
-    background: 'transparent'
-  }
+    background: "transparent",
+  },
 });
 
 // Apply custom styles to the canvas
 const canvas = render.canvas;
-canvas.style.position = 'fixed';
-canvas.style.top = '0';
-canvas.style.left = '0';
-canvas.style.zIndex = '9999';
-canvas.style.pointerEvents = 'none';
+canvas.style.position = "fixed";
+canvas.style.top = "0";
+canvas.style.left = "0";
+canvas.style.zIndex = "9999";
+canvas.style.pointerEvents = "none";
 
+// Configuration for radius and image scale
+const cookieConfig = {
+  S: { radius: 50, scale: 0.3 },
+  M: { radius: 60, scale: 0.5 },
+  L: { radius: 70, scale: 0.8 },
+  XL: { radius: 150, scale: 1 },
+};
 
-// Create physics-enabled cookie bodies
-function createCookie(x, y) {
-  console.log("Creating Cookie");
-  var cookie = Bodies.circle(x, y, 50, {
+function getCookieSizeCategory(totalCharacters) {
+  console.log(`Debug: Total characters = ${totalCharacters}`);
+
+  if (totalCharacters < 100) {
+    console.log("Debug: Size category = S");
+    return "S";
+  }
+  if (totalCharacters < 300) {
+    console.log("Debug: Size category = M");
+    return "M";
+  }
+  if (totalCharacters < 500) {
+    console.log("Debug: Size category = L");
+    return "L";
+  }
+
+  console.log("Debug: Size category = XL");
+  return "XL";
+}
+
+function createCookie(x, y, size) {
+  console.log("Creating Cookie of size:", size);
+
+  const config = cookieConfig[size] || cookieConfig.M; // Default to M size if size is unknown
+
+  var cookie = Bodies.circle(x, y, config.radius, {
     restitution: 1,
     render: {
       sprite: {
-        texture: chrome.runtime.getURL('images/cookie.png'),
-        xScale: 0.2,
-        yScale: 0.2
-      }
-    }
+        texture: chrome.runtime.getURL("images/cookie.png"),
+        xScale: config.scale,
+        yScale: config.scale,
+      },
+    },
   });
+
   Composite.add(engine.world, cookie);
 }
 
-function createCursorBody() { 
+function createCursorBody() {
   const cursorBody = Bodies.circle(0, 0, 80, {
     isStatic: true,
-    density: 100,  // Adjust for desired mass
-    restitution: 1,  // Bounciness
+    density: 100, // Adjust for desired mass
+    restitution: 1, // Bounciness
     frictionAir: 0.05, // Simulates air drag for smoother control
     render: {
-      fillStyle: 'rgba(0, 0, 0, 0)', // Visual style (orange semi-transparent)
-    }
+      fillStyle: "rgba(0, 0, 0, 0)", // Visual style (transparent)
+    },
   });
-  
+
   Composite.add(engine.world, cursorBody);
-  
-  document.addEventListener('mousemove', (event) => {
+
+  document.addEventListener("mousemove", (event) => {
     const mouseX = event.clientX;
     const mouseY = event.clientY;
-    
+
     // Set cursor body position to mouse position
     Matter.Body.setPosition(cursorBody, { x: mouseX, y: mouseY });
   });
@@ -74,37 +103,37 @@ function createBoundaries() {
 
   // Bottom boundary
   var ground = Bodies.rectangle(
-    window.innerWidth / 2, 
-    window.innerHeight + thickness / 2, 
-    window.innerWidth, 
-    thickness, 
+    window.innerWidth / 2,
+    window.innerHeight + thickness / 2,
+    window.innerWidth,
+    thickness,
     { isStatic: true }
   );
 
   // Top boundary
   var ceiling = Bodies.rectangle(
-    window.innerWidth / 2, 
-    -thickness / 2, 
-    window.innerWidth, 
-    thickness, 
+    window.innerWidth / 2,
+    -thickness / 2,
+    window.innerWidth,
+    thickness,
     { isStatic: true }
   );
 
   // Left boundary
   var leftWall = Bodies.rectangle(
-    -thickness / 2, 
-    window.innerHeight / 2, 
-    thickness, 
-    window.innerHeight, 
+    -thickness / 2,
+    window.innerHeight / 2,
+    thickness,
+    window.innerHeight,
     { isStatic: true }
   );
 
   // Right boundary
   var rightWall = Bodies.rectangle(
-    window.innerWidth + thickness / 2, 
-    window.innerHeight / 2, 
-    thickness, 
-    window.innerHeight, 
+    window.innerWidth + thickness / 2,
+    window.innerHeight / 2,
+    thickness,
+    window.innerHeight,
     { isStatic: true }
   );
 
@@ -112,17 +141,35 @@ function createBoundaries() {
   Composite.add(engine.world, [ground, ceiling, leftWall, rightWall]);
 }
 
-createBoundaries();
-createCursorBody();
-
-// Send a message to the background script to get cookies for the current domain
 chrome.runtime.sendMessage(
   { action: "getCookiesForCurrentDomain" },
   (response) => {
     if (response && response.success) {
-      console.log("Cookies for the current", response.domain, response.cookies);
+      console.log(
+        "Cookies for the current domain:",
+        response.domain,
+        response.cookies
+      );
       for (let i = 0; i < response.cookies.length; i++) {
-        createCookie(Math.random() * window.innerWidth, Math.random() * window.innerHeight);
+        const cookie = response.cookies[i];
+
+        // Calculate total characters in all values of the cookie
+        const totalCharacters = Object.values(cookie)
+          .filter((value) => typeof value === "string") // Ensure values are strings
+          .reduce((sum, value) => sum + value.length, 0);
+
+        console.log("Debug: Total characters =", totalCharacters);
+
+        // Categorise based on total characters
+        const sizeCategory = getCookieSizeCategory(totalCharacters);
+        console.log("Debug: Size category =", sizeCategory);
+
+        // Create a cookie with the corresponding size
+        createCookie(
+          Math.random() * window.innerWidth,
+          Math.random() * window.innerHeight,
+          sizeCategory
+        );
       }
     } else {
       console.error("Failed to retrieve cookies.");
@@ -130,7 +177,8 @@ chrome.runtime.sendMessage(
   }
 );
 
-createCookie(Math.random() * window.innerWidth, Math.random() * window.innerHeight);
+createBoundaries();
+createCursorBody();
 
 // run the renderer
 Render.run(render);
