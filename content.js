@@ -37,8 +37,15 @@ const cookieConfig = {
   XL: { radius: 150, scale: 1 },
 };
 
+const cookieTextures = {
+  full: "images/cookie.png",
+  bite1: "images/cookiebite1.png",
+  bite1Selected: "images/cookiebite1-selected.png",
+  bite2: "images/cookiebite2.png",
+  bite2Selected: "images/cookiebite2-selected.png",
+};
+
 function explodeCookie(cookie) {
-  console.log("kaboom!");
   const forceMagnitude = 2; // Adjust force for explosion
   const randomAngle = Math.random() * 2 * Math.PI;
 
@@ -47,14 +54,50 @@ function explodeCookie(cookie) {
     y: forceMagnitude * Math.sin(randomAngle),
   });
 
-  console.log("goodbye!");
   Composite.remove(engine.world, cookie);
 
   setTimeout(() => {
-    for (i = 0; i < 8; i++) {
+    for (let i = 0; i < 3; i++) {
       createCrumb(cookie.position.x, cookie.position.y, cookie.size);
     }
+
+    // Logic for cookie transformation
+    if (
+      cookie.render.sprite.texture ===
+      chrome.runtime.getURL(cookieTextures.full)
+    ) {
+      createTransformedCookie(cookie.position.x, cookie.position.y, "bite1");
+    } else if (
+      cookie.render.sprite.texture ===
+      chrome.runtime.getURL(cookieTextures.bite1)
+    ) {
+      createTransformedCookie(cookie.position.x, cookie.position.y, "bite2");
+    } else if (
+      cookie.render.sprite.texture ===
+      chrome.runtime.getURL(cookieTextures.bite2)
+    ) {
+      for (let i = 0; i < 3; i++) {
+        createCrumb(cookie.position.x, cookie.position.y, cookie.size);
+      }
+    }
   }, 200);
+}
+
+function createTransformedCookie(x, y, state) {
+  const config = cookieConfig.M; // Using M size for all transformed cookies
+
+  var transformedCookie = Bodies.circle(x, y, config.radius, {
+    restitution: 1,
+    render: {
+      sprite: {
+        texture: chrome.runtime.getURL(cookieTextures[state]),
+        xScale: config.scale,
+        yScale: config.scale,
+      },
+    },
+  });
+
+  Composite.add(engine.world, transformedCookie);
 }
 
 function getCookieSizeCategory(totalCharacters) {
@@ -157,67 +200,64 @@ function createCursorBody() {
   let selectedCookie = null;
   const displayedKeysMap = new Map(); // Map to store displayed keys for each cookie
 
-  // Add collision start event listener
   Matter.Events.on(engine, "collisionStart", (event) => {
     event.pairs.forEach((pair) => {
-      // Check if the cursor body is involved in the collision
       if (pair.bodyA === cursorBody || pair.bodyB === cursorBody) {
         const cookieBody = pair.bodyA === cursorBody ? pair.bodyB : pair.bodyA;
-
-        // Only select the cookie if none is currently selected
-        if (!selectedCookie) {
+        if (!selectedCookie && cookieBody.render && cookieBody.render.sprite) {
           if (
-            cookieBody.render &&
-            cookieBody.render.sprite &&
-            !cookieBody.isCrumb
+            cookieBody.render.sprite.texture ===
+            chrome.runtime.getURL(cookieTextures.bite1)
           ) {
+            cookieBody.render.sprite.texture = chrome.runtime.getURL(
+              cookieTextures.bite1Selected
+            );
+          } else if (
+            cookieBody.render.sprite.texture ===
+            chrome.runtime.getURL(cookieTextures.bite2)
+          ) {
+            cookieBody.render.sprite.texture = chrome.runtime.getURL(
+              cookieTextures.bite2Selected
+            );
+          } else if (!cookieBody.isCrumb) {
             cookieBody.render.sprite.texture = chrome.runtime.getURL(
               "images/cookie-selected.png"
             );
-            selectedCookie = cookieBody; // Set the selected cookie
           }
-
-          // Log details of the selected cookie
-          console.log("Cookie touched by cursor and texture updated:", {
-            position: cookieBody.position,
-            radius: cookieBody.circleRadius,
-            id: cookieBody.id,
-            render: cookieBody.render,
-          });
+          selectedCookie = cookieBody;
         }
       }
     });
   });
 
-  // Add collision end event listener
   Matter.Events.on(engine, "collisionEnd", (event) => {
     event.pairs.forEach((pair) => {
-      // Check if the cursor body is involved in the collision
       if (pair.bodyA === cursorBody || pair.bodyB === cursorBody) {
         const cookieBody = pair.bodyA === cursorBody ? pair.bodyB : pair.bodyA;
-
-        // Restore the texture of the cookie if it is the selected one
         if (cookieBody === selectedCookie) {
           if (cookieBody.render && cookieBody.render.sprite) {
-            // Prevent crumbs from being restored to cookie texture
-            console.log("cookieBody.isCrumb", cookieBody.isCrumb);
-            if (!cookieBody.isCrumb) {
-              cookieBody.render.sprite.texture =
-                chrome.runtime.getURL("images/cookie.png");
-              selectedCookie = null; // Clear the selection
+            if (
+              cookieBody.render.sprite.texture ===
+              chrome.runtime.getURL(cookieTextures.bite1Selected)
+            ) {
+              cookieBody.render.sprite.texture = chrome.runtime.getURL(
+                cookieTextures.bite1
+              );
+            } else if (
+              cookieBody.render.sprite.texture ===
+              chrome.runtime.getURL(cookieTextures.bite2Selected)
+            ) {
+              cookieBody.render.sprite.texture = chrome.runtime.getURL(
+                cookieTextures.bite2
+              );
+            } else {
+              if (!cookieBody.isCrumb) {
+                cookieBody.render.sprite.texture =
+                  chrome.runtime.getURL("images/cookie.png");
+              }
             }
+            selectedCookie = null;
           }
-
-          // Log details of the deselected cookie
-          console.log(
-            "Cookie no longer in contact with cursor, texture restored:",
-            {
-              position: cookieBody.position,
-              radius: cookieBody.circleRadius,
-              id: cookieBody.id,
-              render: cookieBody.render,
-            }
-          );
         }
       }
     });

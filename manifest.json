@@ -18,7 +18,11 @@
     {
       "resources": [
         "images/cookie.png",
+        "images/cookiebite1.png",
+        "images/cookiebite2.png",
         "images/cookie-selected.png",
+        "images/cookiebite1-selected.png",
+        "images/cookiebite2-selected.png",
         "images/crumbs/crumb1.png",
         "images/crumbs/crumb2.png",
         "images/crumbs/crumb3.png",
