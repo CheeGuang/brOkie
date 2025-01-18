@@ -3,8 +3,8 @@ var Engine = Matter.Engine,
   Runner = Matter.Runner,
   Bodies = Matter.Bodies,
   Composite = Matter.Composite;
-Mouse = Matter.MouseConstraint;
-MouseConstraint = Matter.MouseConstraint;
+  Mouse = Matter.MouseConstraint;
+  MouseConstraint = Matter.MouseConstraint;
 
 // create an engine
 var engine = Engine.create();
@@ -26,7 +26,7 @@ const canvas = render.canvas;
 canvas.style.position = "fixed";
 canvas.style.top = "0";
 canvas.style.left = "0";
-canvas.style.zIndex = "9999";
+canvas.style.zIndex = "999999";
 canvas.style.pointerEvents = "none";
 
 // Configuration for radius and image scale
@@ -36,6 +36,25 @@ const cookieConfig = {
   L: { radius: 70, scale: 0.8 },
   XL: { radius: 150, scale: 1 },
 };
+
+function explodeCookie(cookie) {
+  console.log("kaboom!")
+  const forceMagnitude = 2; // Adjust force for explosion
+  const randomAngle = Math.random() * 2 * Math.PI;
+
+  Matter.Body.applyForce(cookie, cookie.position, {
+    x: forceMagnitude * Math.cos(randomAngle),
+    y: forceMagnitude * Math.sin(randomAngle)
+  });
+
+  setTimeout(() => {
+    console.log("goodbye!")
+    Composite.remove(engine.world, cookie);
+    for (i = 0; i < 8; i++) {
+      createCrumb(cookie.position.x, cookie.position.y, cookie.size);    
+    }
+  }, 200);
+}
 
 function getCookieSizeCategory(totalCharacters) {
   console.log(`Debug: Total characters = ${totalCharacters}`);
@@ -74,6 +93,37 @@ function createCookie(x, y, size) {
   });
 
   Composite.add(engine.world, cookie);
+
+  setTimeout(() => {
+    explodeCookie(cookie);
+  }, 500);
+}
+
+function createCrumb(x, y, size) {    
+  console.log(`images/crumbs/crumb${Math.floor(Math.random() * 6) + 1}.png`);
+  var crumb = Bodies.circle(x, y, 20, {
+    restitution: 0.2,
+    render: {
+      sprite: {
+        texture: chrome.runtime.getURL(`images/crumbs/crumb${Math.floor(Math.random() * 6) + 1}.png`),
+        xScale: 1.5,
+        yScale: 1.5,
+      },
+    },
+  });
+
+  // // Add click event to trigger explodeCookie when clicked
+  // cookie.render.sprite.clickHandler = () => explodeCookie(cookie);
+
+  Composite.add(engine.world, crumb);
+
+  const forceMagnitude = 0.2; // Adjust force for explosion
+  const randomAngle = Math.random() * 2 * Math.PI;
+
+  Matter.Body.applyForce(crumb, crumb.position, {
+    x: forceMagnitude * Math.cos(randomAngle),
+    y: forceMagnitude * Math.sin(randomAngle)
+  });
 }
 
 function createCursorBody() {
@@ -99,7 +149,7 @@ function createCursorBody() {
 }
 
 function createBoundaries() {
-  const thickness = 50; // Thickness of the boundary walls (large enough to ensure no leaks)
+  const thickness = 50;
 
   // Bottom boundary
   var ground = Bodies.rectangle(
