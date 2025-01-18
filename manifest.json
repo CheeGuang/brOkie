@@ -20,5 +20,15 @@
                 "content.js"
             ]
         }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "/images/cookie.png"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
     ]
 }
