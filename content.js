@@ -66,12 +66,22 @@ function explodeCookie(cookie) {
       cookie.render.sprite.texture ===
       chrome.runtime.getURL(cookieTextures.full)
     ) {
-      createTransformedCookie(cookie.position.x, cookie.position.y, "bite1");
+      createTransformedCookie(
+        cookie.position.x,
+        cookie.position.y,
+        cookie.size,
+        "bite1"
+      );
     } else if (
       cookie.render.sprite.texture ===
       chrome.runtime.getURL(cookieTextures.bite1)
     ) {
-      createTransformedCookie(cookie.position.x, cookie.position.y, "bite2");
+      createTransformedCookie(
+        cookie.position.x,
+        cookie.position.y,
+        cookie.size,
+        "bite2"
+      );
     } else if (
       cookie.render.sprite.texture ===
       chrome.runtime.getURL(cookieTextures.bite2)
@@ -83,8 +93,8 @@ function explodeCookie(cookie) {
   }, 200);
 }
 
-function createTransformedCookie(x, y, state) {
-  const config = cookieConfig.M; // Using M size for all transformed cookies
+function createTransformedCookie(x, y, size, state) {
+  const config = cookieConfig[size] || cookieConfig.M; // Default to M size if size is unknown
 
   var transformedCookie = Bodies.circle(x, y, config.radius, {
     restitution: 1,
@@ -136,11 +146,8 @@ function createCookie(x, y, size) {
     },
   });
 
+  cookie.size = size; // Store size in the cookie for future transformations
   Composite.add(engine.world, cookie);
-
-  // setTimeout(() => {
-  //   explodeCookie(cookie);
-  // }, 500);
 }
 
 function createCrumb(x, y, size) {
@@ -171,6 +178,17 @@ function createCrumb(x, y, size) {
   Matter.Body.applyForce(crumb, crumb.position, {
     x: forceMagnitude * Math.cos(randomAngle),
     y: forceMagnitude * Math.sin(randomAngle),
+  });
+}
+
+// Prevent mouse clicks from going through to the actual page
+function preventClickThrough() {
+  document.addEventListener("click", (event) => {
+    if (selectedCookie) {
+      // Stop propagation and prevent default action when clicking on a cookie
+      event.stopPropagation();
+      event.preventDefault();
+    }
   });
 }
 
@@ -268,52 +286,35 @@ function createCursorBody() {
     if (selectedCookie) {
       // Create and style the modal
       const popup = document.createElement("div");
-      popup.style.position = "fixed";
-      popup.style.top = "10%";
-      popup.style.left = "10%";
-      popup.style.right = "10%";
-      popup.style.bottom = "10%";
-      popup.style.backgroundColor = "#f8f9fa";
-      popup.style.padding = "30px";
-      popup.style.borderRadius = "20px";
-      popup.style.boxShadow = "0px 8px 16px rgba(0, 0, 0, 0.2)";
-      popup.style.zIndex = "1000000";
-      popup.style.textAlign = "center";
-      popup.style.overflowY = "auto";
+      popup.style.position = "fixed"; // Fixed positioning for the popup
+      popup.style.top = "10%"; // Vertical positioning
+      popup.style.left = "10%"; // Horizontal positioning
+      popup.style.right = "10%"; // Width adjustment
+      popup.style.bottom = "10%"; // Height adjustment
+      popup.style.backgroundColor = "#f8f9fa"; // Background colour
+      popup.style.padding = "30px"; // Inner padding
+      popup.style.borderRadius = "20px"; // Rounded corners
+      popup.style.boxShadow = "0px 8px 16px rgba(0, 0, 0, 0.2)"; // Subtle shadow
+      popup.style.zIndex = "1000000"; // Ensure it appears on top
+      popup.style.textAlign = "center"; // Centre-align text
+      popup.style.overflowY = "auto"; // Enable scrolling for overflow content
 
       // Store the selected cookie in the popup's metadata
       popup.selectedCookie = selectedCookie;
 
       const title = document.createElement("h2");
-      title.innerText = "Cookie Details";
+      title.innerText = "Bite-Sized Fun Facts about this Cookie";
       title.style.marginBottom = "20px";
       title.style.color = "#333";
       popup.appendChild(title);
 
       const awaitingText = document.createElement("p");
-      awaitingText.innerText = "Awaiting response...";
+      awaitingText.innerText = "Hang tight, the cookie fun facts are baking!";
       awaitingText.style.marginBottom = "20px";
       awaitingText.style.color = "#555";
       awaitingText.style.fontStyle = "italic";
       popup.appendChild(awaitingText);
 
-      const closeButton = document.createElement("button");
-      closeButton.innerText = "Close";
-      closeButton.style.padding = "10px 20px";
-      closeButton.style.backgroundColor = "#007bff";
-      closeButton.style.color = "white";
-      closeButton.style.border = "none";
-      closeButton.style.borderRadius = "5px";
-      closeButton.style.cursor = "pointer";
-      closeButton.style.marginTop = "20px";
-
-      closeButton.addEventListener("click", () => {
-        document.body.removeChild(popup);
-        explodeCookie(popup.selectedCookie); // Explode the cookie stored in the popup's metadata
-        selectedCookie = null; // Clear the selection
-      });
-
-      popup.appendChild(closeButton);
       document.body.appendChild(popup);
 
       // Fetch cookies for the current domain
@@ -338,7 +339,7 @@ function createCursorBody() {
 
             const selectedCookies = availableCookies
               .sort(() => 0.5 - Math.random())
-              .slice(0, 3); // Take 3 random cookies
+              .slice(0, 5); // Take 3 random cookies
 
             console.log("Selected cookies for display:", selectedCookies);
 
@@ -352,7 +353,7 @@ function createCursorBody() {
               const cookieDetails = selectedCookies
                 .map(({ name, value }) => `${name}: ${value}`)
                 .join(", ");
-              const geminiPrompt = `Provide a concise and engaging 2-sentence summary of this cookie data: ${cookieDetails}. Answer in plaintext and do not use markdown.`;
+              const geminiPrompt = `Provide fun and interesting facts about this cookie data: ${cookieDetails}. Answer in plaintext and do not use markdown. 2 concise paragraphs`;
 
               // Make a request to Gemini for bite-sized information
               const geminiResponse = await fetch(geminiUrl, {
@@ -388,6 +389,7 @@ function createCursorBody() {
               table.style.borderCollapse = "collapse";
               table.style.marginBottom = "20px";
 
+              // Populate table rows
               selectedCookies.forEach(({ name, value }) => {
                 const row = document.createElement("tr");
 
@@ -397,6 +399,9 @@ function createCursorBody() {
                 keyCell.style.padding = "8px";
                 keyCell.style.textAlign = "left";
                 keyCell.style.color = "#555";
+                keyCell.style.maxWidth = "150px"; // Set a maximum width for the cell
+                keyCell.style.wordWrap = "break-word"; // Ensure long words wrap
+                keyCell.style.overflow = "hidden"; // Prevent overflow
 
                 const valueCell = document.createElement("td");
                 valueCell.innerText = value;
@@ -404,13 +409,52 @@ function createCursorBody() {
                 valueCell.style.padding = "8px";
                 valueCell.style.textAlign = "left";
                 valueCell.style.color = "#555";
+                valueCell.style.maxWidth = "300px"; // Set a maximum width for the cell
+                valueCell.style.wordWrap = "break-word"; // Ensure long words wrap
+                valueCell.style.overflow = "hidden"; // Prevent overflow
 
                 row.appendChild(keyCell);
                 row.appendChild(valueCell);
                 table.appendChild(row);
               });
 
+              // Append the table to the popup
               popup.appendChild(table);
+
+              // Style the Close button
+              const closeButton = document.createElement("button");
+              closeButton.innerText = "Close";
+              closeButton.style.display = "block"; // Ensure it spans the width
+              closeButton.style.margin = "20px auto 0"; // Centre it below the table
+              closeButton.style.width = "200px"; // Pill button width
+              closeButton.style.height = "50px"; // Pill button height
+              closeButton.style.padding = "10px";
+              closeButton.style.backgroundColor = "#007bff";
+              closeButton.style.color = "white";
+              closeButton.style.border = "none";
+              closeButton.style.borderRadius = "25px"; // Make it a pill shape
+              closeButton.style.cursor = "pointer";
+              closeButton.style.fontSize = "16px";
+              closeButton.style.textAlign = "center";
+              closeButton.style.boxShadow = "0px 4px 8px rgba(0, 0, 0, 0.2)";
+
+              closeButton.addEventListener("mouseenter", () => {
+                closeButton.style.backgroundColor = "#0056b3";
+              });
+
+              closeButton.addEventListener("mouseleave", () => {
+                closeButton.style.backgroundColor = "#007bff";
+              });
+
+              // Append the Close button to the popup after the table
+              popup.appendChild(closeButton);
+
+              // Add click event listener to the button
+              closeButton.addEventListener("click", () => {
+                document.body.removeChild(popup);
+                explodeCookie(popup.selectedCookie); // Explode the cookie stored in the popup's metadata
+                selectedCookie = null; // Clear the selection
+              });
             } catch (error) {
               console.error("Error interacting with Gemini API:", error);
               awaitingText.innerText =
@@ -504,6 +548,9 @@ chrome.runtime.sendMessage(
     }
   }
 );
+
+// Prevent click-through functionality
+preventClickThrough();
 
 createBoundaries();
 createCursorBody();
