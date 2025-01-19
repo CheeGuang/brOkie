@@ -672,23 +672,3 @@ var runner = Runner.create();
 
 // run the engine
 Runner.run(runner, engine);
-// Add CSS to prevent vertical overflow dynamically
-function preventVerticalOverflow() {
-  const style = document.createElement("style");
-  style.type = "text/css";
-  style.innerHTML = `
-    html, body {
-      overflow-y: hidden;
-    }
-    body {
-      position: relative;
-    }
-    canvas {
-      display: block; /* Ensures the canvas doesn't add extra scrollbars */
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-// Call the function to apply the CSS
-preventVerticalOverflow();
