@@ -46,22 +46,32 @@ const cookieTextures = {
 };
 
 function explodeCookie(cookie) {
-  const forceMagnitude = 2; // Adjust force for explosion
+  const forceMagnitude = 1.2; // Adjust force for explosion
   const randomAngle = Math.random() * 2 * Math.PI;
 
+  // Apply force to the original cookie and remove it from the world
   Matter.Body.applyForce(cookie, cookie.position, {
     x: forceMagnitude * Math.cos(randomAngle),
     y: forceMagnitude * Math.sin(randomAngle),
   });
 
+  // Remove the label div from the DOM
+  if (cookie.labelId) {
+    const labelElement = document.getElementById(cookie.labelId);
+    if (labelElement) {
+      document.body.removeChild(labelElement);
+    }
+  }
+
   Composite.remove(engine.world, cookie);
 
   setTimeout(() => {
-    for (let i = 0; i < 3; i++) {
+    // Create crumbs
+    for (let i = 0; i < 8; i++) {
       createCrumb(cookie.position.x, cookie.position.y, cookie.size);
     }
 
-    // Logic for cookie transformation
+    // Transform the cookie to the next state
     if (
       cookie.render.sprite.texture ===
       chrome.runtime.getURL(cookieTextures.full)
@@ -70,7 +80,8 @@ function explodeCookie(cookie) {
         cookie.position.x,
         cookie.position.y,
         cookie.size,
-        "bite1"
+        "bite1",
+        cookie.cookieName
       );
     } else if (
       cookie.render.sprite.texture ===
@@ -80,7 +91,8 @@ function explodeCookie(cookie) {
         cookie.position.x,
         cookie.position.y,
         cookie.size,
-        "bite2"
+        "bite2",
+        cookie.cookieName
       );
     } else if (
       cookie.render.sprite.texture ===
@@ -92,10 +104,17 @@ function explodeCookie(cookie) {
     }
   }, 200);
 }
-
-function createTransformedCookie(x, y, size, state) {
+function createTransformedCookie(x, y, size, state, name) {
   const config = cookieConfig[size] || cookieConfig.M; // Default to M size if size is unknown
 
+  // Define the maximum number of characters for the label
+  const maxLabelCharacters = 10; // Adjust this value based on your design preferences
+  const truncatedName =
+    name.length > maxLabelCharacters
+      ? name.substring(0, maxLabelCharacters) + "..."
+      : name;
+
+  // Create the transformed cookie
   var transformedCookie = Bodies.circle(x, y, config.radius, {
     restitution: 1,
     render: {
@@ -106,6 +125,40 @@ function createTransformedCookie(x, y, size, state) {
       },
     },
   });
+
+  transformedCookie.size = size; // Store size in the cookie for future transformations
+  transformedCookie.cookieName = name; // Assign the same name as the original cookie
+
+  // Create a new label for the transformed cookie
+  const label = document.createElement("div");
+  label.innerText = truncatedName; // Use truncated name
+  label.style.position = "absolute";
+  label.style.color = "#fff";
+  label.style.fontSize = "16px";
+  label.style.fontWeight = "bold";
+  label.style.textAlign = "center";
+  label.style.pointerEvents = "none";
+  label.style.transformOrigin = "center center";
+  label.style.zIndex = zIndexCounter.toString(); // Set z-index for the label
+  label.style.backgroundColor = "black"; // Black background
+  label.style.borderRadius = "10px"; // Corner radius
+  label.style.padding = "5px 10px"; // Padding inside the label
+  label.style.maxWidth = "150px"; // Set a maximum width for the label
+  label.style.whiteSpace = "nowrap"; // Prevent wrapping
+  label.style.overflow = "hidden"; // Hide overflow text
+
+  Matter.Events.on(engine, "afterUpdate", () => {
+    const posX = cookie.position.x;
+    const posY = cookie.position.y;
+
+    // Set label's position relative to the canvas, compensating for its size
+    label.style.left = `${posX}px`;
+    label.style.top = `${posY}px`;
+    label.style.transform = `translate(-50%, -50%) rotate(${cookie.angle}rad)`;
+  });
+
+  // Increment the global z-index counter for the next cookie
+  zIndexCounter++;
 
   Composite.add(engine.world, transformedCookie);
 }
@@ -130,11 +183,22 @@ function getCookieSizeCategory(totalCharacters) {
   return "XL";
 }
 
-function createCookie(x, y, size) {
+// Global z-index counter to ensure each new cookie is on a different layer
+let zIndexCounter = 1000000; // Starting z-index value
+
+function createCookie(x, y, size, name) {
   console.log("Creating Cookie of size:", size);
 
   const config = cookieConfig[size] || cookieConfig.M; // Default to M size if size is unknown
 
+  // Define the maximum number of characters for the label
+  const maxLabelCharacters = 10; // Adjust this value based on your design preferences
+  const truncatedName =
+    name.length > maxLabelCharacters
+      ? name.substring(0, maxLabelCharacters) + "..."
+      : name;
+
+  // Create the Matter.js body for the cookie
   var cookie = Bodies.circle(x, y, config.radius, {
     restitution: 1,
     render: {
@@ -147,6 +211,44 @@ function createCookie(x, y, size) {
   });
 
   cookie.size = size; // Store size in the cookie for future transformations
+  cookie.cookieName = name; // Store the name for display
+
+  // Create a label element for the cookie name
+  const label = document.createElement("div");
+  const state = "full"; // Initial state is "full"
+  label.id = `cookie-label-${name}-${state}`; // Assign a unique id based on cookie name and state
+  label.innerText = truncatedName; // Use truncated name
+  label.style.position = "absolute";
+  label.style.color = "#fff";
+  label.style.fontSize = "16px";
+  label.style.fontWeight = "bold";
+  label.style.textAlign = "center";
+  label.style.pointerEvents = "none";
+  label.style.transformOrigin = "center center";
+  label.style.zIndex = zIndexCounter.toString(); // Set z-index for the label
+  label.style.backgroundColor = "black"; // Black background
+  label.style.borderRadius = "10px"; // Corner radius
+  label.style.padding = "5px 10px"; // Padding inside the label
+  label.style.maxWidth = "150px"; // Set a maximum width for the label
+  label.style.whiteSpace = "nowrap"; // Prevent wrapping
+  label.style.overflow = "hidden"; // Hide overflow text
+
+  Matter.Events.on(engine, "afterUpdate", () => {
+    const posX = cookie.position.x;
+    const posY = cookie.position.y;
+
+    // Set label's position relative to the canvas, compensating for its size
+    label.style.left = `${posX}px`;
+    label.style.top = `${posY}px`;
+    label.style.transform = `translate(-50%, -50%) rotate(${cookie.angle}rad)`;
+  });
+
+  // Store the label element ID in the cookie object for future reference
+  cookie.labelId = label.id;
+
+  // Increment the global z-index counter for the next cookie
+  zIndexCounter++;
+
   Composite.add(engine.world, cookie);
 }
 
@@ -181,15 +283,25 @@ function createCrumb(x, y, size) {
   });
 }
 
-// Prevent mouse clicks from going through to the actual page
 function preventClickThrough() {
-  document.addEventListener("click", (event) => {
-    if (selectedCookie) {
-      // Stop propagation and prevent default action when clicking on a cookie
-      event.stopPropagation();
-      event.preventDefault();
-    }
-  });
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (selectedCookie) {
+        // Prevent default browser behaviour
+        event.preventDefault();
+
+        // Stop the event from propagating to other elements
+        event.stopPropagation();
+
+        console.log(
+          "Click prevented due to selected rigid body:",
+          selectedCookie
+        );
+      }
+    },
+    true
+  ); // Use the capture phase to intercept clicks before they reach other elements
 }
 
 function createCursorBody() {
@@ -295,7 +407,7 @@ function createCursorBody() {
       popup.style.padding = "30px"; // Inner padding
       popup.style.borderRadius = "20px"; // Rounded corners
       popup.style.boxShadow = "0px 8px 16px rgba(0, 0, 0, 0.2)"; // Subtle shadow
-      popup.style.zIndex = "1000000"; // Ensure it appears on top
+      popup.style.zIndex = "100000000"; // Ensure it appears on top
       popup.style.textAlign = "center"; // Centre-align text
       popup.style.overflowY = "auto"; // Enable scrolling for overflow content
 
@@ -353,7 +465,7 @@ function createCursorBody() {
               const cookieDetails = selectedCookies
                 .map(({ name, value }) => `${name}: ${value}`)
                 .join(", ");
-              const geminiPrompt = `Provide fun and interesting facts about this cookie data: ${cookieDetails}. Answer in plaintext and do not use markdown. 2 concise paragraphs`;
+              const geminiPrompt = `Provide fun and interesting facts about this cookie data: ${cookieDetails}. Answer in plaintext and do not use markdown. 2 concise paragraphs with 2 \\n between. Add a big number of <strong> to bold keypoints.`;
 
               // Make a request to Gemini for bite-sized information
               const geminiResponse = await fetch(geminiUrl, {
@@ -372,16 +484,14 @@ function createCursorBody() {
 
               const geminiData = await geminiResponse.json();
               console.log("Gemini API response:", geminiData);
-              console.log(
-                "Gemini API response:",
-                geminiData.candidates[0].content.parts[0].text
-              );
-              const geminiContent = geminiData.candidates[0].content.parts[0]
-                .text
-                ? geminiData.candidates[0].content.parts[0].text
-                : "No insights available.";
 
-              awaitingText.innerText = geminiContent;
+              // Extract and render content
+              const geminiContent =
+                geminiData.candidates[0]?.content?.parts[0]?.text ||
+                "No insights available.";
+
+              // Render response with HTML tags to enable <strong>
+              awaitingText.innerHTML = geminiContent;
 
               // Add table of selected cookies
               const table = document.createElement("table");
@@ -420,46 +530,44 @@ function createCursorBody() {
 
               // Append the table to the popup
               popup.appendChild(table);
-
-              // Style the Close button
-              const closeButton = document.createElement("button");
-              closeButton.innerText = "Close";
-              closeButton.style.display = "block"; // Ensure it spans the width
-              closeButton.style.margin = "20px auto 0"; // Centre it below the table
-              closeButton.style.width = "200px"; // Pill button width
-              closeButton.style.height = "50px"; // Pill button height
-              closeButton.style.padding = "10px";
-              closeButton.style.backgroundColor = "#007bff";
-              closeButton.style.color = "white";
-              closeButton.style.border = "none";
-              closeButton.style.borderRadius = "25px"; // Make it a pill shape
-              closeButton.style.cursor = "pointer";
-              closeButton.style.fontSize = "16px";
-              closeButton.style.textAlign = "center";
-              closeButton.style.boxShadow = "0px 4px 8px rgba(0, 0, 0, 0.2)";
-
-              closeButton.addEventListener("mouseenter", () => {
-                closeButton.style.backgroundColor = "#0056b3";
-              });
-
-              closeButton.addEventListener("mouseleave", () => {
-                closeButton.style.backgroundColor = "#007bff";
-              });
-
-              // Append the Close button to the popup after the table
-              popup.appendChild(closeButton);
-
-              // Add click event listener to the button
-              closeButton.addEventListener("click", () => {
-                document.body.removeChild(popup);
-                explodeCookie(popup.selectedCookie); // Explode the cookie stored in the popup's metadata
-                selectedCookie = null; // Clear the selection
-              });
             } catch (error) {
               console.error("Error interacting with Gemini API:", error);
               awaitingText.innerText =
-                "Error fetching insights from Gemini API.";
+                "Uh-oh, looks like someone bit into a cookie we can't fetch!";
             }
+            // Style the Close button
+            const closeButton = document.createElement("button");
+            closeButton.innerText = "Close";
+            closeButton.style.display = "block"; // Ensure it spans the width
+            closeButton.style.margin = "20px auto 0"; // Centre it below the table
+            closeButton.style.width = "200px"; // Pill button width
+            closeButton.style.height = "50px"; // Pill button height
+            closeButton.style.padding = "10px";
+            closeButton.style.backgroundColor = "#007bff";
+            closeButton.style.color = "white";
+            closeButton.style.border = "none";
+            closeButton.style.borderRadius = "25px"; // Make it a pill shape
+            closeButton.style.cursor = "pointer";
+            closeButton.style.fontSize = "16px";
+            closeButton.style.textAlign = "center";
+            closeButton.style.boxShadow = "0px 4px 8px rgba(0, 0, 0, 0.2)";
+
+            closeButton.addEventListener("mouseenter", () => {
+              closeButton.style.backgroundColor = "#0056b3";
+            });
+
+            closeButton.addEventListener("mouseleave", () => {
+              closeButton.style.backgroundColor = "#007bff";
+            });
+
+            // Add click event listener to the button
+            closeButton.addEventListener("click", () => {
+              document.body.removeChild(popup);
+              explodeCookie(popup.selectedCookie); // Explode the cookie stored in the popup's metadata
+              selectedCookie = null; // Clear the selection
+            });
+            // Append the Close button to the popup after the table
+            popup.appendChild(closeButton);
           } else {
             console.error("Failed to retrieve cookies.");
             awaitingText.innerText = "Failed to retrieve cookies.";
@@ -540,7 +648,8 @@ chrome.runtime.sendMessage(
         createCookie(
           Math.random() * window.innerWidth,
           Math.random() * window.innerHeight,
-          sizeCategory
+          sizeCategory,
+          cookie.name
         );
       }
     } else {
@@ -563,3 +672,23 @@ var runner = Runner.create();
 
 // run the engine
 Runner.run(runner, engine);
+// Add CSS to prevent vertical overflow dynamically
+function preventVerticalOverflow() {
+  const style = document.createElement("style");
+  style.type = "text/css";
+  style.innerHTML = `
+    html, body {
+      overflow-y: hidden;
+    }
+    body {
+      position: relative;
+    }
+    canvas {
+      display: block; /* Ensures the canvas doesn't add extra scrollbars */
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// Call the function to apply the CSS
+preventVerticalOverflow();
