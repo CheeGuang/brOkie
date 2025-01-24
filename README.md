@@ -6,7 +6,7 @@ https://devpost.com/software/brokie
 
 ## 🏆 Crumbs of Glory
 
-![Team behind brOkie](./images/quacker'sCommendation.png)
+![Team behind brOkie](./images/quacker'sCommendations.png)
 
 brOkie didn’t just steal cookies—it stole hearts too! We proudly bagged Quacker's Commendations at NUS Hack&Roll 2025, proving that even the wackiest ideas can rise to the occasion (like perfectly baked cookies).
 
@@ -77,19 +77,3 @@ We learned browser extension development from scratch, how to integrate a 2D phy
 4. **Learning Browser Extension Development**: Extensions are a different cookie compared to standard web development. We spent hours figuring out how to work within its constraints.
 5. **Physics Gone Wild**: Our initial implementation of physics was so bad it would crash your browser. Matter.js saved the day after much trial and error.
 6. **Cookie Biting**: Designing the biting animation and syncing it with interactive logic at 3 a.m. was no easy feat, but caffeine helped.
-
-## Accomplishments that we're proud of
-
-- **Our First Browser Extension**: It works, it's fun, and it doesn’t break (often).
-- **Responsive Physics**: Realistic physics without frying browsers.
-- **Perfect Timing**: Completing the project while juggling assignments—true multitasking mastery.
-
-## What we learned
-
-We learned browser extension development from scratch, how to integrate a 2D physics engine with Matter.js, and how AI models can generate engaging content. Most importantly, we learned that sometimes, even the most absurd ideas are worth pursuing.
-
-## What's next for brOkie
-
-1. **Cross-Browser Compatibility**: Firefox deserves cookies too.
-2. **Seasonal Themes**: Adding a milk-and-cookies Christmas update (because milk improves everything).
-3. **More Interaction**: More ways to crumble, explode, and visualize cookie data.
