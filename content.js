@@ -306,7 +306,6 @@ function preventClickThrough() {
 
 function createCursorBody() {
   const cursorBody = Bodies.circle(0, 0, 50, {
-    // Increased radius from 80 to 120
     isStatic: true,
     density: 100, // Adjust for desired mass
     restitution: 1, // Bounciness
@@ -326,15 +325,19 @@ function createCursorBody() {
     Matter.Body.setPosition(cursorBody, { x: mouseX, y: mouseY });
   });
 
-  // Track the currently selected cookie and displayed keys
   let selectedCookie = null;
-  const displayedKeysMap = new Map(); // Map to store displayed keys for each cookie
 
+  // Handle hover (collisionStart)
   Matter.Events.on(engine, "collisionStart", (event) => {
     event.pairs.forEach((pair) => {
       if (pair.bodyA === cursorBody || pair.bodyB === cursorBody) {
         const cookieBody = pair.bodyA === cursorBody ? pair.bodyB : pair.bodyA;
-        if (!selectedCookie && cookieBody.render && cookieBody.render.sprite) {
+
+        // If the body is a crumb, do nothing
+        if (cookieBody.isCrumb) return;
+
+        // Change texture to selected on hover
+        if (cookieBody.render && cookieBody.render.sprite) {
           if (
             cookieBody.render.sprite.texture ===
             chrome.runtime.getURL(cookieTextures.bite1)
@@ -349,231 +352,63 @@ function createCursorBody() {
             cookieBody.render.sprite.texture = chrome.runtime.getURL(
               cookieTextures.bite2Selected
             );
-          } else if (!cookieBody.isCrumb) {
+          } else {
             cookieBody.render.sprite.texture = chrome.runtime.getURL(
               "images/cookie-selected.png"
             );
           }
-          selectedCookie = cookieBody;
         }
+
+        selectedCookie = cookieBody;
       }
     });
   });
 
+  // Handle hover out (collisionEnd)
   Matter.Events.on(engine, "collisionEnd", (event) => {
     event.pairs.forEach((pair) => {
       if (pair.bodyA === cursorBody || pair.bodyB === cursorBody) {
         const cookieBody = pair.bodyA === cursorBody ? pair.bodyB : pair.bodyA;
-        if (cookieBody === selectedCookie) {
-          if (cookieBody.render && cookieBody.render.sprite) {
-            if (
-              cookieBody.render.sprite.texture ===
-              chrome.runtime.getURL(cookieTextures.bite1Selected)
-            ) {
-              cookieBody.render.sprite.texture = chrome.runtime.getURL(
-                cookieTextures.bite1
-              );
-            } else if (
-              cookieBody.render.sprite.texture ===
-              chrome.runtime.getURL(cookieTextures.bite2Selected)
-            ) {
-              cookieBody.render.sprite.texture = chrome.runtime.getURL(
-                cookieTextures.bite2
-              );
-            } else {
-              if (!cookieBody.isCrumb) {
-                cookieBody.render.sprite.texture =
-                  chrome.runtime.getURL("images/cookie.png");
-              }
-            }
-            selectedCookie = null;
+
+        // If the body is a crumb, do nothing
+        if (cookieBody.isCrumb) return;
+
+        // Reset texture to default when hover ends
+        if (cookieBody.render && cookieBody.render.sprite) {
+          if (
+            cookieBody.render.sprite.texture ===
+            chrome.runtime.getURL(cookieTextures.bite1Selected)
+          ) {
+            cookieBody.render.sprite.texture = chrome.runtime.getURL(
+              cookieTextures.bite1
+            );
+          } else if (
+            cookieBody.render.sprite.texture ===
+            chrome.runtime.getURL(cookieTextures.bite2Selected)
+          ) {
+            cookieBody.render.sprite.texture = chrome.runtime.getURL(
+              cookieTextures.bite2
+            );
+          } else {
+            cookieBody.render.sprite.texture =
+              chrome.runtime.getURL("images/cookie.png");
           }
         }
+
+        selectedCookie = null;
       }
     });
   });
 
-  // Add click event listener to display a popup
+  // Handle click to explode
   document.addEventListener("click", () => {
     if (selectedCookie) {
-      // Create and style the modal
-      const popup = document.createElement("div");
-      popup.style.position = "fixed"; // Fixed positioning for the popup
-      popup.style.top = "10%"; // Vertical positioning
-      popup.style.left = "10%"; // Horizontal positioning
-      popup.style.right = "10%"; // Width adjustment
-      popup.style.bottom = "10%"; // Height adjustment
-      popup.style.backgroundColor = "#f8f9fa"; // Background colour
-      popup.style.padding = "30px"; // Inner padding
-      popup.style.borderRadius = "20px"; // Rounded corners
-      popup.style.boxShadow = "0px 8px 16px rgba(0, 0, 0, 0.2)"; // Subtle shadow
-      popup.style.zIndex = "100000000"; // Ensure it appears on top
-      popup.style.textAlign = "center"; // Centre-align text
-      popup.style.overflowY = "auto"; // Enable scrolling for overflow content
+      // Explode the cookie if it's not a crumb
+      if (!selectedCookie.isCrumb) {
+        explodeCookie(selectedCookie);
+      }
 
-      // Store the selected cookie in the popup's metadata
-      popup.selectedCookie = selectedCookie;
-
-      const title = document.createElement("h2");
-      title.innerText = "Bite-Sized Fun Facts about this Cookie";
-      title.style.marginBottom = "20px";
-      title.style.color = "#333";
-      popup.appendChild(title);
-
-      const awaitingText = document.createElement("p");
-      awaitingText.innerText = "Hang tight, the cookie fun facts are baking!";
-      awaitingText.style.marginBottom = "20px";
-      awaitingText.style.color = "#555";
-      awaitingText.style.fontStyle = "italic";
-      popup.appendChild(awaitingText);
-
-      document.body.appendChild(popup);
-
-      // Fetch cookies for the current domain
-      chrome.runtime.sendMessage(
-        { action: "getCookiesForCurrentDomain" },
-        async (response) => {
-          if (response && response.success) {
-            console.log("Cookies retrieved successfully:", response.cookies);
-            const cookies = response.cookies;
-            const previousKeys = displayedKeysMap.get(selectedCookie.id) || [];
-
-            // Filter out previously displayed keys
-            const availableCookies = cookies.filter(
-              (cookie) => !previousKeys.includes(cookie.name)
-            );
-
-            if (availableCookies.length === 0) {
-              awaitingText.innerText =
-                "No new cookie data to display for this cookie.";
-              return;
-            }
-
-            const selectedCookies = availableCookies
-              .sort(() => 0.5 - Math.random())
-              .slice(0, 5); // Take 3 random cookies
-
-            console.log("Selected cookies for display:", selectedCookies);
-
-            // Make a request to Gemini for bite-sized information
-            const geminiApiKey = "AIzaSyCHDovzSf3Xc5PZKAyc9snN7TYCytHvp38"; // Replace with your actual API key
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`;
-
-            try {
-              console.log("Sending request to Gemini API...");
-              // Prepare prompt with full cookie key-value pairs
-              const cookieDetails = selectedCookies
-                .map(({ name, value }) => `${name}: ${value}`)
-                .join(", ");
-              const geminiPrompt = `Provide fun and interesting facts about this cookie data: ${cookieDetails}. Answer in plaintext and do not use markdown. 2 concise paragraphs with 2 \\n between. Add a big number of <strong> to bold keypoints.`;
-
-              // Make a request to Gemini for bite-sized information
-              const geminiResponse = await fetch(geminiUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  contents: [
-                    {
-                      parts: [{ text: geminiPrompt }],
-                    },
-                  ],
-                }),
-              });
-
-              const geminiData = await geminiResponse.json();
-              console.log("Gemini API response:", geminiData);
-
-              // Extract and render content
-              const geminiContent =
-                geminiData.candidates[0]?.content?.parts[0]?.text ||
-                "No insights available.";
-
-              // Render response with HTML tags to enable <strong>
-              awaitingText.innerHTML = geminiContent;
-
-              // Add table of selected cookies
-              const table = document.createElement("table");
-              table.style.width = "100%";
-              table.style.borderCollapse = "collapse";
-              table.style.marginBottom = "20px";
-
-              // Populate table rows
-              selectedCookies.forEach(({ name, value }) => {
-                const row = document.createElement("tr");
-
-                const keyCell = document.createElement("td");
-                keyCell.innerText = name;
-                keyCell.style.border = "1px solid #ddd";
-                keyCell.style.padding = "8px";
-                keyCell.style.textAlign = "left";
-                keyCell.style.color = "#555";
-                keyCell.style.maxWidth = "150px"; // Set a maximum width for the cell
-                keyCell.style.wordWrap = "break-word"; // Ensure long words wrap
-                keyCell.style.overflow = "hidden"; // Prevent overflow
-
-                const valueCell = document.createElement("td");
-                valueCell.innerText = value;
-                valueCell.style.border = "1px solid #ddd";
-                valueCell.style.padding = "8px";
-                valueCell.style.textAlign = "left";
-                valueCell.style.color = "#555";
-                valueCell.style.maxWidth = "300px"; // Set a maximum width for the cell
-                valueCell.style.wordWrap = "break-word"; // Ensure long words wrap
-                valueCell.style.overflow = "hidden"; // Prevent overflow
-
-                row.appendChild(keyCell);
-                row.appendChild(valueCell);
-                table.appendChild(row);
-              });
-
-              // Append the table to the popup
-              popup.appendChild(table);
-            } catch (error) {
-              console.error("Error interacting with Gemini API:", error);
-              awaitingText.innerText =
-                "Uh-oh, looks like someone bit into a cookie we can't fetch!";
-            }
-            // Style the Close button
-            const closeButton = document.createElement("button");
-            closeButton.innerText = "Close";
-            closeButton.style.display = "block"; // Ensure it spans the width
-            closeButton.style.margin = "20px auto 0"; // Centre it below the table
-            closeButton.style.width = "200px"; // Pill button width
-            closeButton.style.height = "50px"; // Pill button height
-            closeButton.style.padding = "10px";
-            closeButton.style.backgroundColor = "#007bff";
-            closeButton.style.color = "white";
-            closeButton.style.border = "none";
-            closeButton.style.borderRadius = "25px"; // Make it a pill shape
-            closeButton.style.cursor = "pointer";
-            closeButton.style.fontSize = "16px";
-            closeButton.style.textAlign = "center";
-            closeButton.style.boxShadow = "0px 4px 8px rgba(0, 0, 0, 0.2)";
-
-            closeButton.addEventListener("mouseenter", () => {
-              closeButton.style.backgroundColor = "#0056b3";
-            });
-
-            closeButton.addEventListener("mouseleave", () => {
-              closeButton.style.backgroundColor = "#007bff";
-            });
-
-            // Add click event listener to the button
-            closeButton.addEventListener("click", () => {
-              document.body.removeChild(popup);
-              explodeCookie(popup.selectedCookie); // Explode the cookie stored in the popup's metadata
-              selectedCookie = null; // Clear the selection
-            });
-            // Append the Close button to the popup after the table
-            popup.appendChild(closeButton);
-          } else {
-            console.error("Failed to retrieve cookies.");
-            awaitingText.innerText = "Failed to retrieve cookies.";
-          }
-        }
-      );
+      selectedCookie = null; // Clear the selection
     }
   });
 }
